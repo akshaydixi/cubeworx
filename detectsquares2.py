@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import operator
 import sys
 minVal = 100
 maxVal = 200
@@ -11,24 +12,33 @@ colors = {'y' : [[25,100,100],[40,255,255],[25,200,25]],
 
 
 camera = cv2.VideoCapture('cube.mov')
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(6,6))
 while camera.isOpened():
     ret,_frame = camera.read()
     _frame = cv2.medianBlur(_frame,5)
     
     gray = cv2.cvtColor(_frame,cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+    thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
+    
+    #thresh = cv2.erode(thresh,kernel,iterations=1)
+    #thresh = cv2.dilate(thresh,kernel,iterations=1)
+    thresh = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel,iterations=2)
     canny = thresh#cv2.Canny(thresh,minVal,maxVal)
+    
     contours,hierarchy = cv2.findContours(canny,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-    maxarea = 0
-    maxcnt = contours[0]
-    for h,cnt in enumerate(contours):
-        area = cv2.contourArea(cnt)
-        if area > maxarea:
-            maxcnt = cnt
-            maxarea = area
-    contours = [maxcnt]
-    x,y,w,h = cv2.boundingRect(maxcnt)
-    cv2.rectangle(canny,(x,y),(x+w,y+h),(255,255,250),10)
+    largests = []
+    for cnt in contours:
+        largests.append((cv2.contourArea(cnt),cnt))
+    largests.sort(key=operator.itemgetter(0))
+    largests.reverse()
+    meanarea = 0
+    for cnt in largests[:10]:
+        meanarea +=cnt[0]
+    meanarea = meanarea/10
+    for cnt in largests[:15]:
+        if cnt[0] > meanarea * 1.1 or cnt[0] < meanarea*0.9:continue    
+        x,y,w,h = cv2.boundingRect(cnt[1])
+        cv2.rectangle(canny,(x,y),(x+w,y+h),(255,255,250),10)
     """
     frame = _frame.copy()
     frame = cv2.blur(frame,(3,3))
