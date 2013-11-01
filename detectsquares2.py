@@ -1,23 +1,35 @@
 import numpy as np
 import cv2
 import sys
-
+minVal = 100
+maxVal = 200
 colors = {'y' : [[25,100,100],[40,255,255],[25,200,25]],
           'o' : [[0,100,100],[25,255,255],[100,220,20]],
           'r' :    [[160,100,100],[180,255,255],[0,0,255]],
           'b' :   [[75,100,100],[140,255,255],[255,0,0]],
           'g' :  [[40,100,100],[75,255,255],[0,255,0]]}
 
-if sys.argv[1] not in colors or len(sys.argv)!=2:
-    key = 'b'
-else:
-    key = sys.argv[1]
 
 camera = cv2.VideoCapture('cube.mov')
-lower = np.array(colors[key][0],np.uint8)
-upper = np.array(colors[key][1],np.uint8)
 while camera.isOpened():
     ret,_frame = camera.read()
+    _frame = cv2.medianBlur(_frame,5)
+    
+    gray = cv2.cvtColor(_frame,cv2.COLOR_BGR2GRAY)
+    thresh = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+    canny = thresh#cv2.Canny(thresh,minVal,maxVal)
+    contours,hierarchy = cv2.findContours(canny,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    maxarea = 0
+    maxcnt = contours[0]
+    for h,cnt in enumerate(contours):
+        area = cv2.contourArea(cnt)
+        if area > maxarea:
+            maxcnt = cnt
+            maxarea = area
+    contours = [maxcnt]
+    x,y,w,h = cv2.boundingRect(maxcnt)
+    cv2.rectangle(canny,(x,y),(x+w,y+h),(255,255,250),10)
+    """
     frame = _frame.copy()
     frame = cv2.blur(frame,(3,3))
     hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
@@ -53,20 +65,25 @@ while camera.isOpened():
             cv2.rectangle(frame,(x,y),(x+w,y+h),colors[color][2],2)
 
     
-    
+    """
     if not ret:
         break
-    cv2.imshow('img',frame)
+    cv2.imshow('img',canny)
     x = cv2.waitKey(1) & 0xFF
     if x == 27:
+        print minVal,maxVal
         break
     if x == 81:
+        minVal-=30
         print 'left'
     if x == 82:
+        maxVal+=30
         print 'up'
     if x == 83:
+        minVal+=30
         print 'right'
     if x == 84:
+        maxVal-=30
         print 'down'
     
 camera.release()

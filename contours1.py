@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import sys
 args = sys.argv
+print args
 if len(args) != 2:
     src = 0
 else:
@@ -9,7 +10,7 @@ else:
         src = 'cube.mov'
     else:
         src=0
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(src)
 while camera.isOpened():
     ret,frame = camera.read()
     if not ret:
